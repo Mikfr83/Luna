@@ -1,28 +1,39 @@
 import pymel.core as pm
 from Luna import Logger
+from Luna.core.config import Config
+from Luna.core.config import LunaVars
+Logger.set_level(Config.get(LunaVars.logging_level, default=10))
+
 try:
     from Luna.static import Directories
-    from Luna.interface import lunaMenu
+    from Luna.interface.menu import LunaMenu
+    from Luna.interface.hud import LunaHud
 except Exception as e:
     Logger.exception("Failed to import modules")
 
-Logger.set_level(10)
 
-
-def open_port(port=7221, lang="python"):
+def open_port(lang="python"):
+    port = Config.get(LunaVars.command_port, default=7221)
     if not pm.commandPort("127.0.0.1:{0}".format(port), n=1, q=1):
         try:
-            pm.commandPort(name="127.0.0.1:{0}".format(port), stp=lang, echoOutput=True)
-            Logger.info("Command port opened: Python - 7221")
+            pm.commandPort(name="127.0.0.1:{0}".format(port), stp="python", echoOutput=True)
+            Logger.info("Command port opened: Python - {0}".format(port))
         except Exception as e:
             Logger.exception("Failed to open command port", exc_info=e)
 
 
 def build_luna_menu():
     try:
-        lunaMenu.LunaMenu()
+        LunaMenu.create()
     except Exception as e:
         Logger.exception("Failed to build Luna menu", exc_info=e)
+
+
+def build_luna_hud():
+    try:
+        LunaHud.create()
+    except Exception:
+        Logger.exception("Failed to create HUD")
 
 
 def run():
@@ -32,5 +43,6 @@ def run():
     Logger.info("Current logging level: {0}".format(Logger.get_level(name=1)))
 
     # Luna initialization
-    open_port(port=7221, lang="python")
+    open_port(lang="python")
     build_luna_menu()
+    build_luna_hud()

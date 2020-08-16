@@ -2,7 +2,10 @@
 import json
 import os
 import pickle
-from Luna.core.loggingFn import Logger
+import shutil
+import pymel.core as pm
+from Luna import Logger
+from Luna.static import Directories
 
 
 # Json
@@ -25,10 +28,10 @@ def write_json(path, data={}, as_string=False, sort_keys=True):
     return path
 
 
-def load_json(path, as_string=False):
+def load_json(path, string_data=False):
     try:
         with open(path, "r") as json_file:
-            if as_string:
+            if string_data:
                 data = json.loads(json_file)
             else:
                 data = json.load(json_file)
@@ -45,21 +48,21 @@ def load_json(path, as_string=False):
 
 # Pickle
 def write_pickle(path, data):
-    backupData = {}
+    backup_data = {}
     status = 1
 
-    backupData = load_pickle(path)
+    backup_data = load_pickle(path)
 
     # Check if backup was saved
     if not status:
         return path, status
 
     try:
-        with open(path, "w") as newFile:
-            pickle.dump(data, newFile)
-    except BaseException:
-        Logger.error("Failed to saved file: {0}".format(path), exc_info=1)
-        pickle.dump(backupData, newFile)
+        with open(path, "w") as new_file:
+            pickle.dump(data, new_file)
+    except IOError:
+        Logger.exception("Failed to saved file: {0}".format(path))
+        pickle.dump(backup_data, new_file)
         Logger.warning("Reverted backup data for {0}".format(0))
         status = 0
 
@@ -68,8 +71,8 @@ def write_pickle(path, data):
 
 def load_pickle(path):
     try:
-        with open(path, "r") as readFile:
-            data = pickle.load(readFile)
+        with open(path, "r") as read_file:
+            data = pickle.load(read_file)
     except IOError as e:
         Logger.exception("Failed to load file {0}".format(path), exc_info=e)
         return None
@@ -80,30 +83,30 @@ def load_pickle(path):
 # File
 def create_file(directory="", name="", data="", extension="", path=""):
     if directory and name:
-        fileName = name
+        file_name = name
         if extension:
-            fileName = "{0}.{1}".format(name, extension)
+            file_name = "{0}.{1}".format(name, extension)
 
-        filePath = os.path.normpath(os.path.join(directory, fileName))
+        file_path = os.path.normpath(os.path.join(directory, file_name))
     elif path:
-        filePath = path
+        file_path = path
 
     try:
-        with open(filePath, "w") as f:
+        with open(file_path, "w") as f:
             f.write(data)
     except IOError:
-        Logger.exception("Failed to create file {0}".format(filePath))
+        Logger.exception("Failed to create file {0}".format(file_path))
         return None
 
-    return (filePath)
+    return (file_path)
 
 
-def delete_oldest(directory, fileLimit):
-    allFilePaths = ["{0}/{1}".format(directory, child) for child in os.listdir(directory)]
+def delete_oldest(directory, file_limit):
+    all_files = ["{0}/{1}".format(directory, child) for child in os.listdir(directory)]
 
-    if fileLimit and len(allFilePaths) > fileLimit:
+    if file_limit and len(all_files) > file_limit:
         try:
-            oldest_file = min(allFilePaths, key=os.path.getctime)
+            oldest_file = min(all_files, key=os.path.getctime)
             os.remove(oldest_file)
             return oldest_file
         except Exception as e:
@@ -113,17 +116,35 @@ def delete_oldest(directory, fileLimit):
 
 # Directory
 def create_missing_dir(path):
+    """Creates specified directory if one doesn't exist
+
+    :param path: Directory path
+    :type path: str
+    :return: Path to directory
+    :rtype: str
+    """
     if not os.path.isdir(path):
-        os.mkdir(path)
+        os.makedirs(path)
+    return path
 
 
-def get_parent_dir(path):
-    return os.path.dirname(path)
+# Pipeline functions
+def copy_empty_scene(new_path):
+    if os.path.isfile(new_path):
+        return
+
+    source_path = os.path.join(Directories.EMPTY_SCENES_PATH, "EmptyScene_Maya{0}.ma".format(pm.about(v=1)))
+    Logger.debug("Copying file {0} to {1}".format(source_path, new_path))
+    if not os.path.isfile(source_path):
+        raise IOError
+    try:
+        shutil.copy2(source_path, new_path)
+    except Exception:
+        Logger.exception("Failed to copy scene {0}".format(source_path))
 
 
-def get_dir_name(path):
-    folder = path.split("/")[-1]
-    return folder
+def get_icon(name):
+    return os.path.join(Directories.ICONS_PATH, name)
 
 
 if __name__ == "__main__":

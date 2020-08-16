@@ -1,9 +1,10 @@
-from Luna.core import workspace
-from Luna.core import optionVarFn
+from Luna.workspace import project
+from Luna.core.config import Config
+from Luna.core.config import ProjectVars
 from PySide2 import QtWidgets
-reload(workspace)
+reload(project)
 
-prevPath = optionVarFn.getOptionVar(optionVarFn.LunaVars.previous_workspace, default="")
-path = QtWidgets.QFileDialog.getExistingDirectory(None, "Create Luna workspace", prevPath)
+prev_path = Config.get(ProjectVars.previous_project, "")
+path = QtWidgets.QFileDialog.getExistingDirectory(None, "Create Luna project", prev_path)
 if path:
-    test_workspace = workspace.Workspace.create(path)
+    test_project = project.Project.create(path)

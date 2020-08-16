@@ -1,5 +1,9 @@
-from Luna.core.loggingFn import Logger
+from Luna import Logger
 
 
-class InvalidWorkspacePath(Exception):
+class ProjectNotSet(Exception):
+    pass
+
+
+class AssetNotSet(Exception):
     pass
