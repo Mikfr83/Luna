@@ -9,39 +9,45 @@ from PySide2 import QtWidgets
 
 
 class Asset:
+
+    def __repr__(self):
+        return "Asset: {0}({1}), Model: {2}".format(self.name, self.type, self.meta.get("model"))
+
     def __init__(self, name, typ):
         self.name = name
         self.type = typ.lower()
 
-        current_project = environFn.get_project_var()
-        if not current_project:
+        self.current_project = environFn.get_project_var()
+        if not self.current_project:
             raise exceptions.ProjectNotSet
 
         # Define paths
-        self.path = os.path.join(current_project.path, self.type.lower() + "s", self.name)  # type:str
+        self.path = os.path.join(self.current_project.path, self.type.lower() + "s", self.name)  # type:str
         self.meta_path = os.path.join(self.path, "asset.meta")  # type:str
-        Logger.debug("Asset: {0} Type: {1} Path: {2}".format(self.name, self.type, self.path))
 
         # Meta updates
-        self.meta = self.get_meta()
+        self.meta = self.get_meta()  # type: dict
 
         #  Create directories
         fileFn.create_missing_dir(self.path)
         self.save_meta()
-        self.controls = fileFn.create_missing_dir(os.path.join(self.path, "controls"))
-        self.guides = fileFn.create_missing_dir(os.path.join(self.path, "guides"))
-        self.rig = fileFn.create_missing_dir(os.path.join(self.path, "rig"))
-        self.settings = fileFn.create_missing_dir(os.path.join(self.path, "settings"))
+        self.controls = fileFn.create_missing_dir(os.path.join(self.path, "controls"))  # type:str
+        self.guides = fileFn.create_missing_dir(os.path.join(self.path, "guides"))  # type:str
+        self.rig = fileFn.create_missing_dir(os.path.join(self.path, "rig"))  # type:str
+        self.settings = fileFn.create_missing_dir(os.path.join(self.path, "settings"))  # type:str
         self.weights = _weightsDirectorySctruct(self.path)
         self.data = _dataDirectoryStruct(self.path)
 
         # Copy empty scenes
-        fileFn.copy_empty_scene(os.path.join(self.guides, "{0}.guides.0000.ma".format(self.name)))
-        fileFn.copy_empty_scene(os.path.join(self.rig, "{0}.rig.0000.ma".format(self.name)))
+        fileFn.copy_empty_scene(os.path.join(self.guides, "{0}_guides.0000.ma".format(self.name)))
+        fileFn.copy_empty_scene(os.path.join(self.rig, "{0}_rig.0000.ma".format(self.name)))
 
         # Set env variables and update hud
         environFn.set_asset_var(self)
+        self.current_project.update_meta()
+
         LunaHud.refresh()
+        Logger.debug("Asset: {0} Type: {1} Path: {2}".format(self.name, self.type, self.path))
 
     def get_meta(self):
         meta_dict = {}
@@ -72,11 +78,19 @@ class Asset:
 
         return model_path
 
-    def set_model(self, path):
+    def set_model_path(self, path):
         self.meta["model"] = path
         self.save_meta()
-
         return path
+
+    def get_model_path(self):
+        return self.meta.get("model")
+
+    def get_latest_guides_path(self, full_path=True):
+        return fileFn.get_latest_file("{0}_guides".format(self.name), self.guides, extension="ma", full_path=full_path, split_char=".")
+
+    def get_latest_rig_path(self, full_path=True):
+        return fileFn.get_latest_file("{0}_rig".format(self.name), self.rig, extension="ma", full_path=full_path, split_char=".")
 
 
 class _weightsDirectorySctruct:
@@ -84,23 +98,23 @@ class _weightsDirectorySctruct:
 
     def __init__(self, root):
         # DEFINE RIGGING DIRECTORIES
-        self.blend_shape = fileFn.create_missing_dir(os.path.join(root, "weights", "blend_shape"))
-        self.delta_mush = fileFn.create_missing_dir(os.path.join(root, "weights", "delta_mush"))
-        self.ffd = fileFn.create_missing_dir(os.path.join(root, "weights", "ffd"))
-        self.ncloth = fileFn.create_missing_dir(os.path.join(root, "weights", "ncloth"))
-        self.skin_cluster = fileFn.create_missing_dir(os.path.join(root, "weights", "skin_cluster"))
-        self.non_linear = fileFn.create_missing_dir(os.path.join(root, "weights", "non_linear"))
-        self.tension = fileFn.create_missing_dir(os.path.join(root, "weights", "tension"))
-        self.soft_mod = fileFn.create_missing_dir(os.path.join(root, "weights", "soft_mod"))
-        self.dsAttract = fileFn.create_missing_dir(os.path.join(root, "weights", "dsAttract"))
-        self.ng_layers = fileFn.create_missing_dir(os.path.join(root, "weights", "ng_layers"))
+        self.blend_shape = fileFn.create_missing_dir(os.path.join(root, "weights", "blend_shape"))  # type:str
+        self.delta_mush = fileFn.create_missing_dir(os.path.join(root, "weights", "delta_mush"))  # type:str
+        self.ffd = fileFn.create_missing_dir(os.path.join(root, "weights", "ffd"))  # type:str
+        self.ncloth = fileFn.create_missing_dir(os.path.join(root, "weights", "ncloth"))  # type:str
+        self.skin_cluster = fileFn.create_missing_dir(os.path.join(root, "weights", "skin_cluster"))  # type:str
+        self.non_linear = fileFn.create_missing_dir(os.path.join(root, "weights", "non_linear"))  # type:str
+        self.tension = fileFn.create_missing_dir(os.path.join(root, "weights", "tension"))  # type:str
+        self.soft_mod = fileFn.create_missing_dir(os.path.join(root, "weights", "soft_mod"))  # type:str
+        self.dsAttract = fileFn.create_missing_dir(os.path.join(root, "weights", "dsAttract"))  # type:str
+        self.ng_layers = fileFn.create_missing_dir(os.path.join(root, "weights", "ng_layers"))  # type:str
 
 
 class _dataDirectoryStruct:
     """Directory struct with folder per data type."""
 
     def __init__(self, root):
-        self.blend_shapes = fileFn.create_missing_dir(os.path.join(root, "data", "blend_shapes"))
-        self.poses = fileFn.create_missing_dir(os.path.join(root, "data", "poses"))
-        self.xgen = fileFn.create_missing_dir(os.path.join(root, "data", "xgen"))
-        self.mocap = fileFn.create_missing_dir(os.path.join(root, "data", "mocap"))
+        self.blend_shapes = fileFn.create_missing_dir(os.path.join(root, "data", "blend_shapes"))  # type:str
+        self.poses = fileFn.create_missing_dir(os.path.join(root, "data", "poses"))  # type:str
+        self.xgen = fileFn.create_missing_dir(os.path.join(root, "data", "xgen"))  # type:str
+        self.mocap = fileFn.create_missing_dir(os.path.join(root, "data", "mocap"))  # type:str

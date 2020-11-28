@@ -6,8 +6,8 @@ from Luna import Logger
 try:
     from Luna.utils import fileFn
     from Luna.utils import environFn
-    from Luna.core.config import Config
-    from Luna.core.config import ProjectVars
+    from Luna import Config
+    from Luna import ProjectVars
     from Luna.interface.hud import LunaHud
 except Exception:
     Logger.exception("Failed to import modules")
@@ -19,6 +19,9 @@ class Project:
     """
     TAG_FILE = "luna.proj"
 
+    def __repr__(self):
+        return "{0}({1}): {2}".format(self.name, self.path, self.get_meta())
+
     def __init__(self, path):
         self.path = path  # type: str
         self.name = os.path.basename(path)  # type:str
@@ -28,7 +31,7 @@ class Project:
     @classmethod
     def is_project(cls, path):
         search_file = os.path.join(path, cls.TAG_FILE)
-        Logger.debug("Workpace check ({0}) - {1}".format(os.path.isfile(search_file), path))
+        Logger.debug("isProject check ({0}) - {1}".format(os.path.isfile(search_file), path))
         return os.path.isfile(search_file)
 
     def get_meta(self):
@@ -41,13 +44,13 @@ class Project:
             if os.path.isdir(category_path):
                 asset_dirs = filter(os.path.isdir, [os.path.join(category_path, item) for item in os.listdir(category_path)])
                 meta_dict[category] = [os.path.basename(asset) for asset in asset_dirs]
-        Logger.debug("{0} meta: {1}".format(self.name, meta_dict))
         return meta_dict
 
     def add_to_recent(self):
-        project_queue = Config.get(ProjectVars.recent_projects, default=deque(maxlen=3))
+        max_recent = Config.get(ProjectVars.recent_max, default=3)
+        project_queue = Config.get(ProjectVars.recent_projects, default=deque(maxlen=max_recent))
         if not isinstance(project_queue, deque):
-            project_queue = deque(project_queue, maxlen=3)
+            project_queue = deque(project_queue, maxlen=max_recent)
 
         entry = [self.name, self.path]
         if entry in project_queue:
@@ -55,6 +58,10 @@ class Project:
 
         project_queue.appendleft(entry)
         Config.set(ProjectVars.recent_projects, list(project_queue))
+
+    def update_meta(self):
+        meta_data = self.get_meta()
+        fileFn.write_json(self.meta_path, data=meta_data)
 
     @ staticmethod
     def create(path):
@@ -77,8 +84,7 @@ class Project:
         new_project.add_to_recent()
         LunaHud.refresh()
 
-        Logger.debug("New project path: {0}".format(new_project.path))
-        Logger.debug("New project name: {0}".format(new_project.name))
+        Logger.debug("New project: {0}".format(new_project))
 
         return new_project
 
@@ -98,9 +104,15 @@ class Project:
         project_instance.add_to_recent()
         LunaHud.refresh()
 
-        Logger.debug("Set project path: {0}".format(project_instance.path))
-        Logger.debug("Set project name: {0}".format(project_instance.name))
+        Logger.debug("Setted project: {0}".format(project_instance))
+        # Logger.debug("Set project path: {0}".format(project_instance.path))
+        # Logger.debug("Set project name: {0}".format(project_instance.name))
 
+        return project_instance
+
+    @staticmethod
+    def get():
+        project_instance = environFn.get_project_var()  # type: Project
         return project_instance
 
     @ staticmethod
@@ -108,3 +120,12 @@ class Project:
         environFn.set_asset_var(None)
         environFn.set_project_var(None)
         LunaHud.refresh()
+
+    @staticmethod
+    def refresh_recent():
+        recent_projects = Config.get(ProjectVars.recent_projects)
+        existing_projects = []
+        for prj in recent_projects:
+            if os.path.isdir(prj[1]):
+                existing_projects.append(prj)
+        Config.set(ProjectVars.recent_projects, existing_projects)

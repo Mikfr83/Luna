@@ -1,7 +1,7 @@
 import pymel.core as pm
 from Luna import Logger
-from Luna.core.config import Config
-from Luna.core.config import HudVars
+from Luna import Config
+from Luna import HudVars
 from Luna.utils import environFn
 
 
