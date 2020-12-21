@@ -1,13 +1,19 @@
 from PySide2 import QtWidgets
 from PySide2 import QtGui
 from Luna import Logger
+from Luna.utils import enumFn
 
 
 class PathWidget(QtWidgets.QWidget):
 
-    def __init__(self, parent=None, mode=0, default_path="", label_text="", dialog_label=""):
+    class Mode(enumFn.Enum):
+        EXISTING_DIR = 0
+        EXISTING_FILE = 1
+        SAVE_FILE = 2
+
+    def __init__(self, parent=None, mode=Mode.EXISTING_DIR, default_path="", label_text="", dialog_label=""):
         super(PathWidget, self).__init__(parent)
-        self.mode = mode
+        self.mode = mode.value if isinstance(mode, PathWidget.Mode) else mode
         self.default_path = default_path
         self.label_text = label_text
         self.dialog_label = dialog_label
@@ -38,6 +44,8 @@ class PathWidget(QtWidgets.QWidget):
             self._get_existing_dir()
         elif self.mode == 1:
             self._get_existing_file()
+        elif self.mode == 2:
+            self._get_save_file()
 
     def _get_save_file(self):
         if not self.dialog_label:
@@ -49,7 +57,7 @@ class PathWidget(QtWidgets.QWidget):
     def _get_existing_file(self):
         if not self.dialog_label:
             self.dialog_label = "Select existing file"
-        path = QtWidgets.QFileDialog.getOpenFileName(None, self.dialog_label, self.line_edit.text())
+        path, extra = QtWidgets.QFileDialog.getOpenFileName(None, self.dialog_label, self.line_edit.text())
         if path:
             self.line_edit.setText(path)
 
@@ -59,3 +67,32 @@ class PathWidget(QtWidgets.QWidget):
         path = QtWidgets.QFileDialog.getExistingDirectory(None, self.dialog_label, self.line_edit.text())
         if path:
             self.line_edit.setText(path)
+
+    def add_widget(self, widget):
+        self.main_layout.addWidget(widget)
+
+
+class ScrollWidget(QtWidgets.QWidget):
+    def __init__(self, border=0, **kwargs):
+        super(ScrollWidget, self).__init__(**kwargs)
+
+        self.content = QtWidgets.QWidget(self)
+        self.scroll_area = QtWidgets.QScrollArea()
+
+        self.scroll_area.setWidget(self.content)
+        self.scroll_area.setWidgetResizable(1)
+
+        self.content_layout = QtWidgets.QVBoxLayout()
+        self.content.setLayout(self.content_layout)
+        self.setLayout(QtWidgets.QVBoxLayout())
+        self.layout().addWidget(self.scroll_area)
+        self.layout().setContentsMargins(0, 0, 0, 0)
+
+        if not border:
+            self.scroll_area.setFrameShape(QtWidgets.QFrame.NoFrame)
+
+    def add_widget(self, widget):
+        self.content_layout.addWidget(widget)
+
+    def resizeEvent(self, e):
+        self.scroll_area.resizeEvent(e)
